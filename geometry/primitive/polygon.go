@@ -4,26 +4,49 @@ import (
 	"math"
 
 	zerogdscript "github.com/Anaxarchus/zero-gdscript"
+	"github.com/Anaxarchus/zero-gdscript/pkg/rect2"
 	"github.com/Anaxarchus/zero-gdscript/pkg/vector2"
 	"github.com/fogleman/gg"
 )
 
-type Polygon struct {
-	Vertices []vector2.Vector2
-}
+type Polygon []vector2.Vector2
 
 func NewPolygon(vertices ...vector2.Vector2) Polygon {
-	return Polygon{
-		Vertices: vertices,
+	return Polygon(vertices)
+}
+
+func (p Polygon) Translate(offsetX, offsetY float64) Shape {
+	for i, v := range p {
+		p[i] = v.Add(vector2.Vector2{X: offsetX, Y: offsetY})
 	}
+	return p
+}
+
+func (p Polygon) Scale(factor float64) Shape {
+	for i, v := range p {
+		p[i] = v.Mulf(factor)
+	}
+	return p
+}
+
+func (p Polygon) GetBoundingBox() rect2.Rect2 {
+	position := p[0]
+	size := vector2.Vector2{X: 0.0, Y: 0.0}
+	rect := rect2.Rect2{Position: position, Size: size}
+
+	for _, pt := range p {
+		rect = rect.Expand(pt)
+	}
+
+	return rect
 }
 
 func (p Polygon) Draw(dc *gg.Context, color [4]float64, lwidth float64) {
 	dc.Push()
 	dc.SetLineWidth(lwidth)
 	dc.SetRGBA(color[0], color[1], color[2], color[3])
-	dc.MoveTo(p.Vertices[0].X, p.Vertices[0].Y)
-	for _, v := range p.Vertices[1:] {
+	dc.MoveTo(p[0].X, p[0].Y)
+	for _, v := range p[1:] {
 		dc.LineTo(v.X, v.Y)
 	}
 	dc.ClosePath()
@@ -35,8 +58,8 @@ func (p Polygon) DrawDashed(dc *gg.Context, color [4]float64, lwidth, dashLength
 	dc.Push()
 	dc.SetLineWidth(lwidth)
 	dc.SetRGBA(color[0], color[1], color[2], color[3])
-	dc.MoveTo(p.Vertices[0].X, p.Vertices[0].Y)
-	for _, v := range p.Vertices[1:] {
+	dc.MoveTo(p[0].X, p[0].Y)
+	for _, v := range p[1:] {
 		dc.LineTo(v.X, v.Y)
 	}
 	dc.ClosePath()
@@ -48,8 +71,8 @@ func (p Polygon) DrawDashed(dc *gg.Context, color [4]float64, lwidth, dashLength
 func (p Polygon) DrawFilled(dc *gg.Context, color [4]float64) {
 	dc.Push()
 	dc.SetRGBA(color[0], color[1], color[2], color[3])
-	dc.MoveTo(p.Vertices[0].X, p.Vertices[0].Y)
-	for _, v := range p.Vertices[1:] {
+	dc.MoveTo(p[0].X, p[0].Y)
+	for _, v := range p[1:] {
 		dc.LineTo(v.X, v.Y)
 	}
 	dc.ClosePath()
@@ -57,8 +80,8 @@ func (p Polygon) DrawFilled(dc *gg.Context, color [4]float64) {
 	dc.Pop()
 }
 
-func (p Polygon) Sdf(x, y int) float64 {
-	return SdPolygon(p.Vertices, vector2.Vector2{X: float64(x), Y: float64(y)})
+func (p Polygon) SignedDistance(x, y int) float64 {
+	return SdPolygon(p, vector2.Vector2{X: float64(x), Y: float64(y)})
 }
 
 func SdPolygon(vertices []vector2.Vector2, p vector2.Vector2) float64 {
